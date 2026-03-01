@@ -1,27 +1,4 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Dark Mode</title>
-    <script src="https://js.puter.com/v2/"></script>
-    <style>
-        body { background: #0d1117; color: #c9d1d9; font-family: sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
-        #chat-container { width: 90%; max-width: 600px; height: 80vh; background: #161b22; border: 1px solid #30363d; border-radius: 12px; display: flex; flex-direction: column; }
-        #messages { flex: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
-        .msg { padding: 10px 15px; border-radius: 10px; max-width: 80%; line-height: 1.4; }
-        .ai { background: #21262d; align-self: flex-start; }
-        .user { background: #238636; color: white; align-self: flex-end; }
-        .input-area { padding: 15px; display: flex; gap: 10px; border-top: 1px solid #30363d; }
-        input { flex: 1; background: #010409; border: 1px solid #30363d; color: white; padding: 10px; border-radius: 6px; }
-        button { background: #238636; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: bold; }
-        #status-bar { padding: 5px 20px; font-size: 12px; background: #010409; color: #8b949e; display: flex; justify-content: space-between; }
-        button:disabled { opacity: 0.4; }
-    </style>
-</head>
-<body>
 
-<div id="chat-container">
     <div id="status-bar">
         <span id="status-text">🟡 Initializing...</span>
         <span id="login-link" style="color: #58a6ff; cursor: pointer; display: none;" onclick="initPuter()">Click to Connect</span>
@@ -98,4 +75,5 @@
     input.onkeypress = (e) => { if(e.key === 'Enter') sendChat(); };
 </script>
 </body>
+
 </html>
