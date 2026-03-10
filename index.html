@@ -2,212 +2,860 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>IDIOTBOX 1</title>
+    <title>IDIOTBOX 1.5</title>
     <style>
-        @import url('https://fonts.cdnfonts.com/css/impact');
-        body { margin: 0; overflow: hidden; background: #1a001a; font-family: 'Impact', sans-serif; color: #ff00ff; }
-        #crosshair { position: absolute; top: 50%; left: 50%; width: 14px; height: 14px; border: 2px solid #ff00ff; transform: translate(-50%, -50%); pointer-events: none; z-index: 10; border-radius: 50%; }
-        #net-status { position: absolute; top: 30px; left: 30px; font-size: 18px; color: #fff; background: rgba(255,0,255,0.2); padding: 10px; border: 1px solid #ff00ff; z-index: 100; }
-        input { font-family: 'Impact'; background: #110011; border: 1px solid #ff00ff; color: #ff00ff; padding: 5px; outline: none; width: 150px; }
-        #my-id { color: #0ff; cursor: pointer; text-decoration: underline; }
-        #ui-left { position: absolute; bottom: 30px; left: 30px; background: rgba(30, 0, 30, 0.9); padding: 20px; border-left: 5px solid #ff00ff; pointer-events: none; }
-        .key { color: #000; background: #ff00ff; padding: 0 5px; margin-right: 5px; }
+        @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&display=swap');
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --neon: #ff00ff;
+            --cyan: #00ffff;
+            --green: #00ff88;
+            --warn: #ffaa00;
+            --dark: #060006;
+            --panel: rgba(10, 0, 15, 0.85);
+            --border: rgba(255, 0, 255, 0.4);
+        }
+
+        body {
+            overflow: hidden;
+            background: var(--dark);
+            font-family: 'Share Tech Mono', monospace;
+            color: var(--neon);
+            cursor: none;
+        }
+
+        canvas { display: block; }
+
+        /* ── CROSSHAIR ── */
+        #crosshair {
+            position: fixed;
+            top: 50%; left: 50%;
+            width: 20px; height: 20px;
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+            z-index: 50;
+        }
+        #crosshair::before, #crosshair::after {
+            content: '';
+            position: absolute;
+            background: var(--cyan);
+            box-shadow: 0 0 6px var(--cyan);
+        }
+        #crosshair::before { width: 2px; height: 100%; left: 50%; top: 0; transform: translateX(-50%); }
+        #crosshair::after  { width: 100%; height: 2px; top: 50%; left: 0; transform: translateY(-50%); }
+        #crosshair .dot {
+            position: absolute;
+            width: 4px; height: 4px;
+            background: var(--neon);
+            border-radius: 50%;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            box-shadow: 0 0 8px var(--neon);
+        }
+
+        /* ── SCAN LINES ── */
+        #scanlines {
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            z-index: 5;
+            background: repeating-linear-gradient(
+                0deg,
+                rgba(0,0,0,0.03) 0px,
+                rgba(0,0,0,0.03) 1px,
+                transparent 1px,
+                transparent 3px
+            );
+        }
+
+        /* ── VIGNETTE ── */
+        #vignette {
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            z-index: 4;
+            background: radial-gradient(ellipse at center, transparent 55%, rgba(0,0,0,0.75) 100%);
+        }
+
+        /* ── HUD PANELS ── */
+        .hud-panel {
+            position: fixed;
+            background: var(--panel);
+            border: 1px solid var(--border);
+            backdrop-filter: blur(4px);
+            z-index: 20;
+        }
+
+        /* TOP-LEFT: Connection */
+        #panel-net {
+            top: 20px; left: 20px;
+            padding: 14px 18px;
+            min-width: 260px;
+            clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 12px 100%, 0 calc(100% - 12px));
+        }
+        #panel-net .label { font-size: 10px; color: rgba(255,0,255,0.5); letter-spacing: 3px; margin-bottom: 6px; }
+        #panel-net .val { font-family: 'Orbitron', sans-serif; font-size: 13px; color: var(--cyan); }
+        #my-id {
+            cursor: pointer;
+            text-decoration: none;
+            padding: 2px 6px;
+            border: 1px solid rgba(0,255,255,0.3);
+            transition: all 0.2s;
+            display: inline-block;
+            max-width: 170px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            vertical-align: middle;
+        }
+        #my-id:hover { background: rgba(0,255,255,0.1); border-color: var(--cyan); box-shadow: 0 0 10px rgba(0,255,255,0.3); }
+        #copy-hint { font-size: 9px; color: rgba(255,0,255,0.4); margin-left: 6px; }
+        #copy-flash { color: var(--green); font-size: 10px; display: none; animation: fadeout 1.5s forwards; }
+        @keyframes fadeout { 0%{opacity:1} 70%{opacity:1} 100%{opacity:0} }
+
+        .connect-row { margin-top: 10px; display: flex; gap: 6px; align-items: center; }
+        #join-id {
+            font-family: 'Share Tech Mono', monospace;
+            background: rgba(255,0,255,0.05);
+            border: 1px solid rgba(255,0,255,0.3);
+            color: var(--cyan);
+            padding: 5px 8px;
+            outline: none;
+            font-size: 12px;
+            flex: 1;
+            transition: border 0.2s;
+        }
+        #join-id:focus { border-color: var(--cyan); box-shadow: 0 0 8px rgba(0,255,255,0.2); }
+        #join-btn {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 10px;
+            background: transparent;
+            border: 1px solid var(--neon);
+            color: var(--neon);
+            padding: 5px 10px;
+            cursor: pointer;
+            letter-spacing: 1px;
+            transition: all 0.2s;
+        }
+        #join-btn:hover { background: rgba(255,0,255,0.15); box-shadow: 0 0 10px rgba(255,0,255,0.3); }
+
+        #peer-count { margin-top: 8px; font-size: 11px; }
+        .peer-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--green); box-shadow: 0 0 6px var(--green); margin-right: 6px; animation: pulse 2s infinite; }
+        @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+        .peer-dot.offline { background: #ff3333; box-shadow: 0 0 6px #ff3333; animation: none; }
+
+        /* TOP-RIGHT: Status */
+        #panel-status {
+            top: 20px; right: 20px;
+            padding: 14px 18px;
+            text-align: right;
+            clip-path: polygon(12px 0, 100% 0, 100% calc(100% - 12px), calc(100% - 12px) 100%, 0 100%, 0 12px);
+        }
+        #panel-status .stat-row { font-size: 11px; margin-bottom: 4px; }
+        #panel-status .stat-val { color: var(--cyan); font-family: 'Orbitron', sans-serif; font-size: 13px; }
+        #grab-indicator {
+            margin-top: 8px;
+            font-size: 11px;
+            color: var(--warn);
+            display: none;
+        }
+        #grab-indicator.active { display: block; animation: glow 0.8s infinite alternate; }
+        @keyframes glow { from { text-shadow: 0 0 5px var(--warn); } to { text-shadow: 0 0 15px var(--warn), 0 0 30px var(--warn); } }
+
+        /* BOTTOM: Controls */
+        #panel-controls {
+            bottom: 20px; left: 50%;
+            transform: translateX(-50%);
+            padding: 12px 22px;
+            display: flex;
+            gap: 20px;
+            align-items: center;
+            white-space: nowrap;
+            clip-path: polygon(12px 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 0 100%, 0 12px);
+        }
+        .ctrl-group { display: flex; align-items: center; gap: 6px; font-size: 11px; }
+        .key-badge {
+            display: inline-block;
+            background: var(--neon);
+            color: #000;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 9px;
+            font-weight: 700;
+            padding: 2px 6px;
+            letter-spacing: 1px;
+        }
+        .ctrl-sep { width: 1px; height: 24px; background: var(--border); }
+
+        /* SPAWN PALETTE (bottom right) */
+        #panel-spawn {
+            bottom: 20px; right: 20px;
+            padding: 14px 18px;
+            min-width: 140px;
+        }
+        #panel-spawn .sp-title { font-size: 9px; letter-spacing: 3px; color: rgba(255,0,255,0.5); margin-bottom: 10px; }
+        .sp-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 5px 6px;
+            margin-bottom: 4px;
+            border: 1px solid transparent;
+            cursor: pointer;
+            transition: all 0.15s;
+            font-size: 11px;
+        }
+        .sp-item:hover, .sp-item.active {
+            background: rgba(255,0,255,0.1);
+            border-color: rgba(255,0,255,0.4);
+        }
+        .sp-icon {
+            width: 22px; height: 22px;
+            display: flex; align-items: center; justify-content: center;
+            border: 1px solid rgba(255,0,255,0.3);
+            font-size: 10px;
+            font-family: 'Orbitron', sans-serif;
+            font-weight: 700;
+            color: var(--cyan);
+        }
+
+        /* LOCK OVERLAY */
+        #lock-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(6,0,6,0.85);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+            backdrop-filter: blur(3px);
+        }
+        #lock-overlay h1 {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 48px;
+            font-weight: 900;
+            letter-spacing: 8px;
+            color: var(--neon);
+            text-shadow: 0 0 20px var(--neon), 0 0 60px rgba(255,0,255,0.4);
+            margin-bottom: 8px;
+            animation: flicker 4s infinite;
+        }
+        @keyframes flicker {
+            0%,95%,100%{opacity:1} 96%{opacity:0.6} 97%{opacity:1} 98%{opacity:0.7} 99%{opacity:1}
+        }
+        #lock-overlay .sub {
+            font-size: 13px;
+            color: rgba(255,0,255,0.5);
+            letter-spacing: 4px;
+            margin-bottom: 40px;
+        }
+        #lock-overlay .click-msg {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 14px;
+            color: var(--cyan);
+            letter-spacing: 3px;
+            animation: blink 1.2s infinite;
+        }
+        @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.2} }
+        .key-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 12px;
+            margin-bottom: 36px;
+        }
+        .key-card {
+            border: 1px solid rgba(255,0,255,0.3);
+            padding: 12px 16px;
+            text-align: center;
+            background: rgba(255,0,255,0.04);
+        }
+        .key-card .k { font-family: 'Orbitron', sans-serif; font-size: 18px; color: var(--neon); margin-bottom: 4px; }
+        .key-card .d { font-size: 10px; color: rgba(255,0,255,0.5); letter-spacing: 1px; }
+
+        /* NOTIFICATIONS */
+        #notif-stack {
+            position: fixed;
+            top: 90px; left: 50%;
+            transform: translateX(-50%);
+            z-index: 30;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
+            pointer-events: none;
+        }
+        .notif {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 11px;
+            letter-spacing: 2px;
+            padding: 6px 20px;
+            border: 1px solid;
+            animation: notifIn 0.2s ease-out, notifOut 0.4s ease-in 1.8s forwards;
+        }
+        .notif.info { color: var(--cyan); border-color: rgba(0,255,255,0.4); background: rgba(0,255,255,0.07); }
+        .notif.success { color: var(--green); border-color: rgba(0,255,136,0.4); background: rgba(0,255,136,0.07); }
+        .notif.warn { color: var(--warn); border-color: rgba(255,170,0,0.4); background: rgba(255,170,0,0.07); }
+        @keyframes notifIn { from{opacity:0;transform:translateY(-8px)} to{opacity:1;transform:translateY(0)} }
+        @keyframes notifOut { to{opacity:0;transform:translateY(-8px)} }
     </style>
 </head>
 <body>
 
-<div id="net-status">
-    MY ID: <span id="my-id">...</span>
-    <input type="text" id="join-id" placeholder="CONNECT ID...">
+<!-- OVERLAYS -->
+<div id="scanlines"></div>
+<div id="vignette"></div>
+
+<!-- CROSSHAIR -->
+<div id="crosshair"><div class="dot"></div></div>
+
+<!-- LOCK OVERLAY -->
+<div id="lock-overlay">
+    <h1>IDIOTBOX</h1>
+    <div class="sub">// MULTIPLAYER PHYSICS SANDBOX //</div>
+    <div class="key-grid">
+        <div class="key-card"><div class="k">WASD</div><div class="d">MOVE</div></div>
+        <div class="key-card"><div class="k">SPACE</div><div class="d">JUMP</div></div>
+        <div class="key-card"><div class="k">SHIFT</div><div class="d">SPRINT</div></div>
+        <div class="key-card"><div class="k">R-CLK</div><div class="d">GRAB</div></div>
+        <div class="key-card"><div class="k">1</div><div class="d">PLANK</div></div>
+        <div class="key-card"><div class="k">2</div><div class="d">CUBE</div></div>
+        <div class="key-card"><div class="k">3</div><div class="d">BARREL</div></div>
+        <div class="key-card"><div class="k">4</div><div class="d">PILLAR</div></div>
+        <div class="key-card"><div class="k">5</div><div class="d">SPHERE</div></div>
+        <div class="key-card"><div class="k">6</div><div class="d">RAMP</div></div>
+        <div class="key-card"><div class="k">F</div><div class="d">FLING</div></div>
+        <div class="key-card"><div class="k">DEL</div><div class="d">DELETE</div></div>
+    </div>
+    <div class="click-msg">CLICK TO ENTER</div>
 </div>
 
-<div id="crosshair"></div>
-
-<div id="ui-left">
-    <div style="font-size: 20px; color: #0ff;">VIEWMODEL SYNC ACTIVE</div>
-    <div><span class="key">R-CLICK</span> GRAB | <span class="key">1-4</span> SPAWN</div>
+<!-- HUD -->
+<div id="panel-net" class="hud-panel">
+    <div class="label">NETWORK ID</div>
+    <div><span id="my-id" class="val" title="Click to copy">—</span><span id="copy-hint">CLICK TO COPY</span><span id="copy-flash"> ✓ COPIED</span></div>
+    <div class="connect-row">
+        <input type="text" id="join-id" placeholder="PASTE PEER ID..." autocomplete="off" spellcheck="false">
+        <button id="join-btn">JOIN</button>
+    </div>
+    <div id="peer-count"><span class="peer-dot offline" id="peer-dot"></span><span id="peer-label">NO PEERS</span></div>
 </div>
+
+<div id="panel-status" class="hud-panel">
+    <div class="stat-row">OBJECTS: <span class="stat-val" id="obj-count">0</span></div>
+    <div class="stat-row">PEERS: <span class="stat-val" id="peer-num">0</span></div>
+    <div class="stat-row">FPS: <span class="stat-val" id="fps-val">—</span></div>
+    <div id="grab-indicator">◆ HOLDING OBJECT</div>
+</div>
+
+<div id="panel-controls" class="hud-panel">
+    <div class="ctrl-group"><span class="key-badge">WASD</span> MOVE</div>
+    <div class="ctrl-sep"></div>
+    <div class="ctrl-group"><span class="key-badge">SPACE</span> JUMP</div>
+    <div class="ctrl-sep"></div>
+    <div class="ctrl-group"><span class="key-badge">R-CLICK</span> GRAB</div>
+    <div class="ctrl-sep"></div>
+    <div class="ctrl-group"><span class="key-badge">F</span> FLING</div>
+    <div class="ctrl-sep"></div>
+    <div class="ctrl-group"><span class="key-badge">1–6</span> SPAWN</div>
+    <div class="ctrl-sep"></div>
+    <div class="ctrl-group"><span class="key-badge">DEL</span> DELETE</div>
+</div>
+
+<div id="panel-spawn" class="hud-panel">
+    <div class="sp-title">SPAWN MENU</div>
+    <div class="sp-item" data-key="1"><div class="sp-icon">1</div> PLANK</div>
+    <div class="sp-item" data-key="2"><div class="sp-icon">2</div> CUBE</div>
+    <div class="sp-item" data-key="3"><div class="sp-icon">3</div> BARREL</div>
+    <div class="sp-item" data-key="4"><div class="sp-icon">4</div> PILLAR</div>
+    <div class="sp-item" data-key="5"><div class="sp-icon">5</div> SPHERE</div>
+    <div class="sp-item" data-key="6"><div class="sp-icon">6</div> RAMP</div>
+</div>
+
+<div id="notif-stack"></div>
 
 <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
-<script type="importmap"> { "imports": { "three": "https://unpkg.com/three@0.160.0/build/three.module.js", "cannon": "https://unpkg.com/cannon-es@0.20.0/dist/cannon-es.js" } } </script>
-
+<script type="importmap">{ "imports": { "three": "https://unpkg.com/three@0.160.0/build/three.module.js", "cannon": "https://unpkg.com/cannon-es@0.20.0/dist/cannon-es.js" } }</script>
 <script type="module">
-    import * as THREE from 'three';
-    import * as CANNON from 'cannon';
+import * as THREE from 'three';
+import * as CANNON from 'cannon';
 
-    const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x0a000a);
-    const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-    camera.rotation.order = 'YXZ';
-    const renderer = new THREE.WebGLRenderer({ antialias: true });
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    document.body.appendChild(renderer.domElement);
+// ── NOTIFY ──────────────────────────────────────────
+function notify(msg, type='info') {
+    const el = document.createElement('div');
+    el.className = `notif ${type}`;
+    el.textContent = msg;
+    document.getElementById('notif-stack').appendChild(el);
+    setTimeout(() => el.remove(), 2400);
+}
 
-    const world = new CANNON.World();
-    world.gravity.set(0, -25, 0);
+// ── SCENE SETUP ──────────────────────────────────────
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x050008);
+scene.fog = new THREE.FogExp2(0x050008, 0.018);
 
-    scene.add(new THREE.AmbientLight(0xff00ff, 0.3));
-    const pLight = new THREE.PointLight(0xff00ff, 20, 20); scene.add(pLight);
-    scene.add(new THREE.GridHelper(500, 50, 0xff00ff, 0x220022));
+const camera = new THREE.PerspectiveCamera(80, innerWidth/innerHeight, 0.1, 500);
+camera.rotation.order = 'YXZ';
 
-    const floor = new CANNON.Body({ mass: 0, shape: new CANNON.Plane() });
-    floor.quaternion.setFromAxisAngle(new CANNON.Vec3(1, 0, 0), -Math.PI/2);
-    world.addBody(floor);
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(innerWidth, innerHeight);
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 0.9;
+document.body.appendChild(renderer.domElement);
+renderer.domElement.style.position = 'fixed';
+renderer.domElement.style.inset = '0';
 
-    // --- LOCAL VIEWMODEL ---
-    const localGun = new THREE.Group();
-    const gMain = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.1, 0.4), new THREE.MeshStandardMaterial({color: 0x000000}));
-    const gCore = new THREE.Mesh(new THREE.SphereGeometry(0.05), new THREE.MeshStandardMaterial({color: 0xff00ff, emissive: 0xff00ff, emissiveIntensity: 2}));
-    gCore.position.z = -0.15; localGun.add(gMain, gCore); scene.add(localGun);
+// ── PHYSICS ──────────────────────────────────────────
+const world = new CANNON.World();
+world.gravity.set(0, -28, 0);
+world.broadphase = new CANNON.NaiveBroadphase();
+world.solver.iterations = 10;
 
-    // --- NETWORKING ---
-    const peer = new Peer();
-    let conns = [], objects = {}, remotePlayers = {};
-    const myIdEl = document.getElementById('my-id');
-    const joinInput = document.getElementById('join-id');
+// ── LIGHTING ─────────────────────────────────────────
+const ambLight = new THREE.AmbientLight(0x110022, 0.8);
+scene.add(ambLight);
 
-    function createPlayerMesh() {
-        const group = new THREE.Group();
-        // Body
-        const body = new THREE.Mesh(new THREE.CapsuleGeometry(0.4, 1, 4, 8), new THREE.MeshStandardMaterial({ color: 0x00ffff, emissive: 0x00ffff, emissiveIntensity: 0.5 }));
-        body.position.y = 0.9;
-        // Head/Pivot for the gun
-        const head = new THREE.Group();
-        head.position.y = 1.4;
-        const eye = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.1, 0.1), new THREE.MeshBasicMaterial({color: 0x000000}));
-        eye.position.z = -0.35;
-        // Remote Gun
-        const rGun = new THREE.Group();
-        const rgMain = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.1, 0.4), new THREE.MeshStandardMaterial({color: 0x000000}));
-        rGun.position.set(0.3, -0.2, -0.2);
-        rGun.add(rgMain);
-        
-        head.add(eye, rGun);
-        group.add(body, head);
-        scene.add(group);
-        return { group, head };
+const rimLight = new THREE.DirectionalLight(0xff00ff, 0.6);
+rimLight.position.set(-10, 20, -10);
+scene.add(rimLight);
+
+const fillLight = new THREE.DirectionalLight(0x0044ff, 0.4);
+fillLight.position.set(10, 15, 10);
+scene.add(fillLight);
+
+// Point lights for atmosphere
+const colors = [0xff00ff, 0x00ffff, 0x8800ff];
+const pLights = colors.map((c, i) => {
+    const l = new THREE.PointLight(c, 30, 40);
+    const angle = (i / colors.length) * Math.PI * 2;
+    l.position.set(Math.cos(angle)*20, 8, Math.sin(angle)*20);
+    scene.add(l);
+    return l;
+});
+
+// ── FLOOR ─────────────────────────────────────────────
+const floorGeo = new THREE.PlaneGeometry(500, 500, 80, 80);
+// Subtle displacement for interest
+const floorMat = new THREE.MeshStandardMaterial({
+    color: 0x0a0015,
+    roughness: 0.9,
+    metalness: 0.1,
+    wireframe: false,
+});
+const floorMesh = new THREE.Mesh(floorGeo, floorMat);
+floorMesh.rotation.x = -Math.PI / 2;
+floorMesh.receiveShadow = true;
+scene.add(floorMesh);
+
+// Grid lines - layered for depth
+const grid1 = new THREE.GridHelper(500, 60, 0xff00ff, 0x1a0028);
+grid1.position.y = 0.01;
+const grid2 = new THREE.GridHelper(500, 20, 0x440055, 0x220033);
+grid2.position.y = 0.005;
+scene.add(grid1, grid2);
+
+// Physics floor
+const floorBody = new CANNON.Body({ mass: 0, shape: new CANNON.Plane() });
+floorBody.quaternion.setFromAxisAngle(new CANNON.Vec3(1, 0, 0), -Math.PI/2);
+world.addBody(floorBody);
+
+// ── ENVIRONMENT DECORATIONS ───────────────────────────
+function addEnvPillar(x, z) {
+    const h = 2 + Math.random() * 4;
+    const geo = new THREE.BoxGeometry(0.3, h, 0.3);
+    const mat = new THREE.MeshStandardMaterial({ color: 0x1a0028, emissive: 0x220033, roughness: 0.8 });
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.position.set(x, h/2, z);
+    mesh.castShadow = true;
+    scene.add(mesh);
+    // Glow cap
+    const capGeo = new THREE.SphereGeometry(0.12);
+    const capMat = new THREE.MeshStandardMaterial({ color: 0xff00ff, emissive: 0xff00ff, emissiveIntensity: 3 });
+    const cap = new THREE.Mesh(capGeo, capMat);
+    cap.position.set(x, h + 0.1, z);
+    scene.add(cap);
+}
+for (let i = 0; i < 30; i++) {
+    const angle = (i / 30) * Math.PI * 2;
+    const r = 35 + (Math.random() - 0.5) * 10;
+    addEnvPillar(Math.cos(angle) * r, Math.sin(angle) * r);
+}
+
+// ── LOCAL VIEWMODEL ───────────────────────────────────
+const localGun = new THREE.Group();
+const gunMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.3, metalness: 0.8 });
+const gunBody = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.09, 0.45), gunMat);
+const gunSlide = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.05, 0.3), new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.2, metalness: 0.9 }));
+gunSlide.position.set(0, 0.06, -0.05);
+const gunBarrel = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.5, 8), new THREE.MeshStandardMaterial({ color: 0x333333, metalness: 1.0, roughness: 0.1 }));
+gunBarrel.rotation.x = Math.PI/2;
+gunBarrel.position.z = -0.25;
+const gunCore = new THREE.Mesh(new THREE.SphereGeometry(0.04), new THREE.MeshStandardMaterial({ color: 0xff00ff, emissive: 0xff00ff, emissiveIntensity: 4 }));
+gunCore.position.z = -0.22;
+localGun.add(gunBody, gunSlide, gunBarrel, gunCore);
+scene.add(localGun);
+
+// ── OBJECT DEFINITIONS ────────────────────────────────
+const kit = {
+    '1': { name:'PLANK',  s:[3.0, 0.2, 1.2], c:0x8b6040, rough:0.9, metal:0, shape:'box' },
+    '2': { name:'CUBE',   s:[2.0, 2.0, 2.0], c:0xcc8833, rough:0.7, metal:0, shape:'box' },
+    '3': { name:'BARREL', s:[0.9, 1.6, 0],   c:0x444455, rough:0.5, metal:0.6, shape:'cyl' },
+    '4': { name:'PILLAR', s:[1.0, 8.0, 1.0], c:0x555566, rough:0.8, metal:0, shape:'box' },
+    '5': { name:'SPHERE', s:[0.8, 0, 0],     c:0x3399ff, rough:0.2, metal:0.8, shape:'sph' },
+    '6': { name:'RAMP',   s:[3.0, 0.3, 4.0], c:0x7a5533, rough:0.85, metal:0, shape:'box' },
+};
+
+// ── NETWORKING ────────────────────────────────────────
+const peer = new Peer();
+let conns = [], objects = {}, remotePlayers = {};
+const myIdEl = document.getElementById('my-id');
+const joinInput = document.getElementById('join-id');
+const peerDot = document.getElementById('peer-dot');
+const peerLabel = document.getElementById('peer-label');
+
+function updatePeerUI() {
+    const n = conns.filter(c => c.open).length;
+    document.getElementById('peer-num').textContent = n;
+    if (n > 0) {
+        peerDot.classList.remove('offline');
+        peerLabel.textContent = `${n} PEER${n > 1 ? 'S' : ''} CONNECTED`;
+    } else {
+        peerDot.classList.add('offline');
+        peerLabel.textContent = 'NO PEERS';
     }
+}
 
-    peer.on('open', id => { myIdEl.innerText = id; });
-    peer.on('connection', setupConn);
+function createPlayerMesh() {
+    const group = new THREE.Group();
+    // Body capsule substitute
+    const bodyMat = new THREE.MeshStandardMaterial({ color: 0x00ffcc, emissive: 0x00ffcc, emissiveIntensity: 0.4, roughness: 0.5, transparent: true, opacity: 0.85 });
+    const torso = new THREE.Mesh(new THREE.CapsuleGeometry(0.35, 0.9, 6, 12), bodyMat);
+    torso.position.y = 0.9;
+    torso.castShadow = true;
+    // Visor
+    const visorMat = new THREE.MeshStandardMaterial({ color: 0x00ffff, emissive: 0x00ffff, emissiveIntensity: 2, transparent: true, opacity: 0.8 });
+    const visor = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.12, 0.1), visorMat);
+    visor.position.set(0, 0, -0.36);
+    // Head
+    const headGroup = new THREE.Group();
+    headGroup.position.y = 1.5;
+    const head = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.5, 0.5), bodyMat);
+    // Remote gun
+    const rGunGroup = new THREE.Group();
+    const rGun = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.09, 0.4), new THREE.MeshStandardMaterial({ color: 0x111111 }));
+    const rCore = new THREE.Mesh(new THREE.SphereGeometry(0.03), new THREE.MeshStandardMaterial({ color: 0xff00ff, emissive: 0xff00ff, emissiveIntensity: 3 }));
+    rCore.position.z = -0.18;
+    rGunGroup.add(rGun, rCore);
+    rGunGroup.position.set(0.3, -0.15, -0.2);
+    headGroup.add(head, visor, rGunGroup);
+    group.add(torso, headGroup);
+    scene.add(group);
+    // Name tag
+    return { group, head: headGroup };
+}
 
-    function setupConn(c) {
-        c.on('open', () => {
-            conns.push(c);
-            remotePlayers[c.peer] = createPlayerMesh();
-            Object.keys(objects).forEach(id => c.send({ type: 'spawn', id, pos: objects[id].body.position, key: objects[id].key }));
+peer.on('open', id => {
+    myIdEl.textContent = id;
+    notify('CONNECTED // ID READY', 'success');
+});
+
+peer.on('connection', c => { setupConn(c); });
+
+function setupConn(c) {
+    c.on('open', () => {
+        conns.push(c);
+        remotePlayers[c.peer] = createPlayerMesh();
+        Object.keys(objects).forEach(id => {
+            const o = objects[id];
+            c.send({ type:'spawn', id, pos:{ x:o.body.position.x, y:o.body.position.y, z:o.body.position.z }, key:o.key });
         });
-        c.on('data', d => {
-            if (d.type === 'player_move' && remotePlayers[c.peer]) {
-                const p = remotePlayers[c.peer];
-                p.group.position.set(d.x, d.y - 1.7, d.z);
-                p.group.rotation.y = d.ry;
-                p.head.rotation.x = d.pitch; // Sync looking up/down
-            }
-            if (d.type === 'spawn' && !objects[d.id]) spawn(d.key, d.id, d.pos, true);
-            if (d.type === 'obj_sync' && objects[d.id]) {
-                const o = objects[d.id];
-                o.body.position.set(d.x, d.y, d.z);
-                o.body.quaternion.set(d.qx, d.qy, d.qz, d.qw);
-            }
+        notify(`PEER JOINED`, 'success');
+        updatePeerUI();
+    });
+    c.on('data', d => {
+        if (d.type === 'player_move' && remotePlayers[c.peer]) {
+            const p = remotePlayers[c.peer];
+            p.group.position.set(d.x, d.y - 1.7, d.z);
+            p.group.rotation.y = d.ry;
+            p.head.rotation.x = d.pitch;
+        }
+        if (d.type === 'spawn' && !objects[d.id]) spawnObject(d.key, d.id, d.pos, true);
+        if (d.type === 'obj_sync' && objects[d.id]) {
+            const o = objects[d.id];
+            o.body.position.set(d.x, d.y, d.z);
+            o.body.quaternion.set(d.qx, d.qy, d.qz, d.qw);
+        }
+        if (d.type === 'delete' && objects[d.id]) deleteObject(d.id, true);
+    });
+    c.on('close', () => {
+        if (remotePlayers[c.peer]) { scene.remove(remotePlayers[c.peer].group); delete remotePlayers[c.peer]; }
+        conns = conns.filter(x => x !== c);
+        notify('PEER DISCONNECTED', 'warn');
+        updatePeerUI();
+    });
+}
+
+joinInput.onkeypress = e => { if (e.key === 'Enter') doJoin(); };
+document.getElementById('join-btn').onclick = doJoin;
+function doJoin() {
+    const v = joinInput.value.trim();
+    if (!v) return;
+    const c = peer.connect(v);
+    setupConn(c);
+    joinInput.value = '';
+    notify('CONNECTING...', 'info');
+}
+
+// Copy ID
+myIdEl.onclick = () => {
+    if (myIdEl.textContent === '—') return;
+    navigator.clipboard.writeText(myIdEl.textContent);
+    document.getElementById('copy-flash').style.display = 'inline';
+    setTimeout(() => document.getElementById('copy-flash').style.display = 'none', 1600);
+};
+
+// Spawn palette click
+document.querySelectorAll('.sp-item').forEach(el => {
+    el.addEventListener('mousedown', e => {
+        e.stopPropagation();
+        if (document.pointerLockElement) {
+            spawnFront(el.dataset.key);
+        }
+    });
+});
+
+// ── SPAWN OBJECTS ─────────────────────────────────────
+function spawnFront(key) {
+    const pos = new THREE.Vector3(0, 0, -4).applyQuaternion(camera.quaternion).add(camera.position);
+    spawnObject(key, `o_${peer.id}_${Date.now()}`, pos, false);
+}
+
+function spawnObject(key, id, pos, isRemote = false) {
+    const d = kit[key];
+    if (!d) return;
+    let geo, shape;
+    if (d.shape === 'cyl') {
+        geo = new THREE.CylinderGeometry(d.s[0]/2, d.s[0]/2, d.s[1], 16);
+        shape = new CANNON.Cylinder(d.s[0]/2, d.s[0]/2, d.s[1], 16);
+    } else if (d.shape === 'sph') {
+        geo = new THREE.SphereGeometry(d.s[0], 16, 12);
+        shape = new CANNON.Sphere(d.s[0]);
+    } else {
+        geo = new THREE.BoxGeometry(...d.s);
+        shape = new CANNON.Box(new CANNON.Vec3(d.s[0]/2, d.s[1]/2, d.s[2]/2));
+    }
+    const mat = new THREE.MeshStandardMaterial({ color: d.c, roughness: d.rough, metalness: d.metal });
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
+
+    const body = new CANNON.Body({ mass: 18, shape });
+    body.position.set(pos.x ?? pos[0] ?? 0, (pos.y ?? pos[1] ?? 3) + 0.5, pos.z ?? pos[2] ?? 0);
+    body.linearDamping = 0.3;
+    body.angularDamping = 0.5;
+
+    // Ramp: spawn tilted
+    if (key === '6') body.quaternion.setFromAxisAngle(new CANNON.Vec3(1,0,0), -0.3);
+
+    scene.add(mesh);
+    world.addBody(body);
+    objects[id] = { mesh, body, key, owner: !isRemote };
+
+    if (!isRemote) {
+        conns.forEach(c => c.send({ type:'spawn', id, pos: { x:body.position.x, y:body.position.y, z:body.position.z }, key }));
+        notify(`SPAWNED ${d.name}`, 'info');
+    }
+    document.getElementById('obj-count').textContent = Object.keys(objects).length;
+}
+
+function deleteObject(id, isRemote = false) {
+    if (!objects[id]) return;
+    scene.remove(objects[id].mesh);
+    world.remove(objects[id].body);
+    delete objects[id];
+    if (!isRemote) conns.forEach(c => c.send({ type:'delete', id }));
+    document.getElementById('obj-count').textContent = Object.keys(objects).length;
+}
+
+// ── INPUT ─────────────────────────────────────────────
+let yaw = 0, pitch = 0, pY = 0, vVel = 0, grounded = true;
+let held = null, hId = null, bob = 0;
+const keys = {};
+
+const lockOverlay = document.getElementById('lock-overlay');
+lockOverlay.addEventListener('click', () => renderer.domElement.requestPointerLock());
+
+document.addEventListener('pointerlockchange', () => {
+    lockOverlay.style.display = document.pointerLockElement ? 'none' : 'flex';
+});
+
+renderer.domElement.addEventListener('mousedown', e => {
+    if (!document.pointerLockElement) { renderer.domElement.requestPointerLock(); return; }
+    const ray = new THREE.Raycaster();
+    ray.setFromCamera(new THREE.Vector2(0, 0), camera);
+    const meshes = Object.values(objects).map(o => o.mesh);
+    const hits = ray.intersectObjects(meshes);
+
+    if (e.button === 2) {
+        if (held) {
+            objects[hId].owner = false;
+            held = null; hId = null;
+            document.getElementById('grab-indicator').classList.remove('active');
+        } else if (hits.length > 0) {
+            hId = Object.keys(objects).find(k => objects[k].mesh === hits[0].object);
+            held = objects[hId].body;
+            objects[hId].owner = true;
+            document.getElementById('grab-indicator').classList.add('active');
+        }
+    }
+});
+
+document.addEventListener('mousemove', e => {
+    if (!document.pointerLockElement) return;
+    yaw -= e.movementX * 0.002;
+    pitch = Math.max(-1.4, Math.min(1.4, pitch - e.movementY * 0.002));
+});
+
+document.addEventListener('contextmenu', e => e.preventDefault());
+
+document.addEventListener('keydown', e => {
+    if (document.activeElement === joinInput) return;
+    keys[e.code] = true;
+    if (e.code === 'Space' && grounded) { vVel = 16; grounded = false; }
+    if (kit[e.key]) spawnFront(e.key);
+    if (e.code === 'KeyF' && held) {
+        // Fling
+        const fwd = new THREE.Vector3(0, 0.3, -1).applyQuaternion(camera.quaternion).normalize();
+        held.velocity.set(fwd.x * 40, fwd.y * 40 + 8, fwd.z * 40);
+        objects[hId].owner = false;
+        held = null; hId = null;
+        document.getElementById('grab-indicator').classList.remove('active');
+        notify('OBJECT FLUNG', 'warn');
+    }
+    if ((e.code === 'Delete' || e.code === 'Backspace') && held) {
+        const id = hId;
+        held = null; hId = null;
+        document.getElementById('grab-indicator').classList.remove('active');
+        deleteObject(id);
+        notify('OBJECT DELETED', 'warn');
+    }
+});
+document.addEventListener('keyup', e => { keys[e.code] = false; });
+
+// ── FPS COUNTER ───────────────────────────────────────
+let lastTime = performance.now(), frames = 0;
+const fpsEl = document.getElementById('fps-val');
+
+// ── ANIMATE ───────────────────────────────────────────
+const clock = new THREE.Clock();
+
+// Animate point lights
+let lt = 0;
+function animate() {
+    requestAnimationFrame(animate);
+    const dt = Math.min(clock.getDelta(), 0.05);
+    lt += dt;
+
+    // FPS
+    frames++;
+    const now = performance.now();
+    if (now - lastTime >= 500) {
+        fpsEl.textContent = Math.round(frames / ((now - lastTime) / 1000));
+        frames = 0; lastTime = now;
+    }
+
+    world.fixedStep(1/60, dt, 3);
+
+    // Orbit point lights
+    pLights.forEach((l, i) => {
+        const a = lt * 0.3 + (i / pLights.length) * Math.PI * 2;
+        l.position.x = Math.cos(a) * 20;
+        l.position.z = Math.sin(a) * 20;
+        l.position.y = 8 + Math.sin(lt * 0.7 + i) * 3;
+    });
+
+    // Movement
+    const speed = keys['ShiftLeft'] ? 0.45 : 0.22;
+    if (keys['KeyW'] || keys['KeyS'] || keys['KeyA'] || keys['KeyD']) {
+        const move = new THREE.Vector3();
+        if (keys['KeyW']) move.z -= speed;
+        if (keys['KeyS']) move.z += speed;
+        if (keys['KeyA']) move.x -= speed;
+        if (keys['KeyD']) move.x += speed;
+        move.applyQuaternion(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0,1,0), yaw));
+        camera.position.add(move);
+        if (grounded) bob += speed * 1.5;
+    }
+
+    // Vertical
+    pY += vVel * dt;
+    if (pY > 0) { vVel -= 1.2; grounded = false; } else { pY = 0; vVel = 0; grounded = true; }
+    const targetY = pY + 1.75 + (grounded ? Math.sin(bob) * 0.04 : 0);
+    camera.position.y += (targetY - camera.position.y) * 0.25;
+    camera.rotation.set(pitch, yaw, 0);
+
+    // Viewmodel
+    localGun.position.copy(camera.position);
+    localGun.rotation.copy(camera.rotation);
+    localGun.translateX(0.32);
+    localGun.translateY(-0.28 - Math.sin(bob * 0.5) * 0.015);
+    localGun.translateZ(-0.55);
+    // Subtle bob on gun
+    if (held) {
+        gunCore.material.emissiveIntensity = 2 + Math.sin(lt * 8) * 1.5;
+    } else {
+        gunCore.material.emissiveIntensity = 3 + Math.sin(lt * 3) * 1;
+    }
+
+    // Sync player state
+    if (conns.some(c => c.open)) {
+        conns.forEach(c => {
+            if (!c.open) return;
+            c.send({ type:'player_move', x:camera.position.x, y:camera.position.y, z:camera.position.z, ry:yaw, pitch });
         });
-        c.on('close', () => { scene.remove(remotePlayers[c.peer].group); delete remotePlayers[c.peer]; });
     }
 
-    joinInput.onkeypress = e => { if(e.key === 'Enter') setupConn(peer.connect(e.target.value)); };
-
-    // --- GAMEPLAY ---
-    const kit = { '1': {s:[3, 0.2, 1.2], c:0x8b4513}, '2': {s:[2, 2, 2], c:0xcd853f}, '3': {s:[1, 1.6], c:0x333333, cy:true}, '4': {s:[1, 8, 1], c:0x444444} };
-
-    function spawn(key, id, pos, isRem = false) {
-        const d = kit[key];
-        const mesh = new THREE.Mesh(d.cy ? new THREE.CylinderGeometry(d.s[0]/2, d.s[0]/2, d.s[1], 16) : new THREE.BoxGeometry(...d.s), new THREE.MeshStandardMaterial({ color: d.c }));
-        const body = new CANNON.Body({ mass: 15, shape: d.cy ? new CANNON.Cylinder(d.s[0]/2, d.s[0]/2, d.s[1], 16) : new CANNON.Box(new CANNON.Vec3(d.s[0]/2, d.s[1]/2, d.s[2]/2)) });
-        body.position.copy(pos);
-        scene.add(mesh); world.addBody(body);
-        objects[id] = { mesh, body, key, owner: !isRem };
-        if (!isRem) conns.forEach(c => c.send({ type: 'spawn', id, pos, key }));
+    // Held object
+    if (held) {
+        const t = new THREE.Vector3(0, 0, -4.5).applyQuaternion(camera.quaternion).add(camera.position);
+        const strength = 28;
+        held.velocity.set(
+            (t.x - held.position.x) * strength,
+            (t.y - held.position.y) * strength,
+            (t.z - held.position.z) * strength
+        );
+        held.angularVelocity.set(0, 0, 0);
     }
 
-    let yaw = 0, pitch = 0, pY = 0, vVel = 0, grounded = true, held = null, hId = null, bob = 0;
-    const keys = {};
-
-    window.addEventListener('mousedown', e => {
-        if (e.target.tagName === 'INPUT' || e.target.id === 'my-id') return;
-        if (!document.pointerLockElement) { renderer.domElement.requestPointerLock(); return; }
-        const ray = new THREE.Raycaster(); ray.setFromCamera(new THREE.Vector2(0,0), camera);
-        const hits = ray.intersectObjects(Object.values(objects).map(o => o.mesh));
-        if (e.button === 2) {
-            if (held) { objects[hId].owner = false; held = null; }
-            else if (hits.length > 0) {
-                hId = Object.keys(objects).find(k => objects[k].mesh === hits[0].object);
-                held = objects[hId].body; objects[hId].owner = true;
-            }
+    // Sync physics objects
+    Object.keys(objects).forEach(id => {
+        const o = objects[id];
+        o.mesh.position.copy(o.body.position);
+        o.mesh.quaternion.copy(o.body.quaternion);
+        if (o.owner && conns.some(c => c.open)) {
+            const bq = o.body.quaternion;
+            const bp = o.body.position;
+            conns.forEach(c => {
+                if (!c.open) return;
+                c.send({ type:'obj_sync', id, x:bp.x, y:bp.y, z:bp.z, qx:bq.x, qy:bq.y, qz:bq.z, qw:bq.w });
+            });
         }
     });
 
-    document.onmousemove = e => { if(document.pointerLockElement){ yaw -= e.movementX*0.002; pitch = Math.max(-1.5, Math.min(1.5, pitch - e.movementY*0.002)); }};
-    document.onkeydown = e => { 
-        if (document.activeElement === joinInput) return;
-        keys[e.code] = true; 
-        if (e.code === 'Space' && grounded) { vVel = 14; grounded = false; }
-        if (kit[e.key]) spawn(e.key, "o_"+peer.id+"_"+Date.now(), new THREE.Vector3(0,0,-5).applyQuaternion(camera.quaternion).add(camera.position));
-    };
-    document.onkeyup = e => keys[e.code] = false;
+    renderer.render(scene, camera);
+}
 
-    function animate() {
-        requestAnimationFrame(animate);
-        world.fixedStep();
+// ── RESIZE ────────────────────────────────────────────
+window.addEventListener('resize', () => {
+    camera.aspect = innerWidth / innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(innerWidth, innerHeight);
+});
 
-        const s = (keys.ShiftLeft ? 0.38 : 0.2);
-        if (document.activeElement !== joinInput && (keys.KeyW||keys.KeyS||keys.KeyA||keys.KeyD)) {
-            const move = new THREE.Vector3();
-            if(keys.KeyW) move.z-=s; if(keys.KeyS) move.z+=s; if(keys.KeyA) move.x-=s; if(keys.KeyD) move.x+=s;
-            camera.position.add(move.applyQuaternion(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0,1,0), yaw)));
-            if(grounded) bob += s * 1.4;
-        }
-        
-        pY += vVel * 0.016;
-        if(pY > 0) { vVel -= 0.7; grounded = false; } else { pY=0; vVel=0; grounded=true; }
-        camera.position.y = (camera.position.y * 0.7) + ((pY + 1.7 + Math.sin(bob)*0.05) * 0.3);
-        camera.rotation.set(pitch, yaw, 0);
-
-        // Local Viewmodel Positioning
-        localGun.position.copy(camera.position); 
-        localGun.rotation.copy(camera.rotation);
-        localGun.translateX(0.35); localGun.translateY(-0.35); localGun.translateZ(-0.6);
-
-        // Player & Viewmodel Sync
-        if (conns.length > 0) {
-            conns.forEach(c => c.send({ 
-                type: 'player_move', 
-                x: camera.position.x, y: camera.position.y, z: camera.position.z, 
-                ry: yaw, pitch: pitch 
-            }));
-        }
-
-        if (held) {
-            const t = new THREE.Vector3(0,0,-5.5).applyQuaternion(camera.quaternion).add(camera.position);
-            held.velocity.set((t.x-held.position.x)*25, (t.y-held.position.y)*25, (t.z-held.position.z)*25);
-            held.angularVelocity.set(0,0,0);
-        }
-
-        Object.keys(objects).forEach(id => {
-            const o = objects[id];
-            o.mesh.position.copy(o.body.position);
-            o.mesh.quaternion.copy(o.body.quaternion);
-            if (o.owner && conns.length > 0) {
-                conns.forEach(c => c.send({
-                    type: 'obj_sync', id, 
-                    x: o.body.position.x, y: o.body.position.y, z: o.body.position.z,
-                    qx: o.body.quaternion.x, qy: o.body.quaternion.y, qz: o.body.quaternion.z, qw: o.body.quaternion.w
-                }));
-            }
-        });
-
-        renderer.render(scene, camera);
-    }
-    animate();
+animate();
 </script>
 </body>
 </html>
